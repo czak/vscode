@@ -1114,6 +1114,20 @@ export enum Direction {
 	Previous,
 }
 
+export enum Movement {
+	Up,
+	Down,
+	Left,
+	Right,
+}
+
+export enum Layout {
+	PanelBottomSidebarRight,
+	PanelBottomSidebarLeft,
+	PanelRightSidebarRight,
+	PanelRightSidebarLeft,
+}
+
 export abstract class BaseNavigationAction extends Action {
 
 	constructor(
@@ -1128,23 +1142,107 @@ export abstract class BaseNavigationAction extends Action {
 	}
 
 	public run(): TPromise<any> {
-		const isEditorFocus = this.partService.hasFocus(Parts.EDITOR_PART);
-		const isPanelFocus = this.partService.hasFocus(Parts.PANEL_PART);
-		const isSidebarFocus = this.partService.hasFocus(Parts.SIDEBAR_PART);
+		const focusedPart = [
+			Parts.EDITOR_PART,
+			Parts.PANEL_PART,
+			Parts.SIDEBAR_PART,
+		].filter(part => this.partService.hasFocus(part))[0];
 
-		const isEditorGroupVertical = this.groupService.getGroupOrientation() === 'vertical';
+		// TODO: Navigating between editor groups
+		// const isEditorGroupVertical = this.groupService.getGroupOrientation() === 'vertical';
 		const isSidebarPositionLeft = this.partService.getSideBarPosition() === SidebarPosition.LEFT;
+		const isPanelPositionBottom = this.partService.getPanelPosition() === SidebarPosition.BOTTOM;
 
-		if (isEditorFocus) {
-			return this.navigateOnEditorFocus(isEditorGroupVertical, isSidebarPositionLeft);
+		const layout = this.getCurrentLayout(isSidebarPositionLeft, isPanelPositionBottom);
+
+		// TODO: Make static
+		const navigationMap = {
+			[Layout.PanelBottomSidebarRight]: {
+				[Parts.EDITOR_PART]: {
+					[Movement.Right]: Parts.SIDEBAR_PART,
+					[Movement.Down]: Parts.PANEL_PART,
+				},
+				[Parts.PANEL_PART]: {
+					[Movement.Up]: Parts.EDITOR_PART,
+					[Movement.Right]: Parts.SIDEBAR_PART,
+				},
+				[Parts.SIDEBAR_PART]: {
+					[Movement.Left]: Parts.EDITOR_PART,
+				}
+			},
+			[Layout.PanelRightSidebarRight]: {
+				[Parts.EDITOR_PART]: {
+					[Movement.Right]: Parts.PANEL_PART,
+				},
+				[Parts.PANEL_PART]: {
+					[Movement.Left]: Parts.EDITOR_PART,
+					[Movement.Right]: Parts.SIDEBAR_PART,
+				},
+				[Parts.SIDEBAR_PART]: {
+					[Movement.Left]: Parts.PANEL_PART,
+				}
+			},
+			[Layout.PanelBottomSidebarLeft]: {
+				[Parts.EDITOR_PART]: {
+					[Movement.Left]: Parts.SIDEBAR_PART,
+					[Movement.Down]: Parts.PANEL_PART,
+				},
+				[Parts.PANEL_PART]: {
+					[Movement.Up]: Parts.EDITOR_PART,
+					[Movement.Left]: Parts.SIDEBAR_PART,
+				},
+				[Parts.SIDEBAR_PART]: {
+					[Movement.Right]: Parts.EDITOR_PART,
+				}
+			},
+			[Layout.PanelRightSidebarLeft]: {
+				[Parts.EDITOR_PART]: {
+					[Movement.Right]: Parts.PANEL_PART,
+					[Movement.Left]: Parts.SIDEBAR_PART,
+				},
+				[Parts.PANEL_PART]: {
+					[Movement.Left]: Parts.EDITOR_PART,
+				},
+				[Parts.SIDEBAR_PART]: {
+					[Movement.Right]: Parts.EDITOR_PART,
+				}
+			},
+		};
+
+		const layoutMap = navigationMap[layout];
+		const movements = layoutMap && layoutMap[focusedPart];
+		const nextPart = movements && movements[this.getMovement()];
+
+		return this.navigateToPart(nextPart);
+	}
+
+	protected getMovement(): Movement {
+		return null;
+	}
+
+	protected getCurrentLayout(isSidebarPositionLeft: boolean, isPanelPositionBottom: boolean): Layout {
+		if (isSidebarPositionLeft) {
+			if (isPanelPositionBottom) {
+				return Layout.PanelBottomSidebarLeft;
+			} else {
+				return Layout.PanelRightSidebarLeft;
+			}
+		} else {
+			if (isPanelPositionBottom) {
+				return Layout.PanelBottomSidebarRight;
+			} else {
+				return Layout.PanelRightSidebarRight;
+			}
 		}
+	}
 
-		if (isPanelFocus) {
-			return this.navigateOnPanelFocus(isEditorGroupVertical, isSidebarPositionLeft);
-		}
-
-		if (isSidebarFocus) {
-			return this.navigateOnSidebarFocus(isEditorGroupVertical, isSidebarPositionLeft);
+	protected navigateToPart(part: Parts): TPromise<boolean | IViewlet | IPanel> {
+		if (part === Parts.EDITOR_PART) {
+			return this.navigateToLastActiveGroup();
+		} else if (part === Parts.PANEL_PART) {
+			return this.navigateToPanel();
+		} else if (part === Parts.SIDEBAR_PART) {
+			return this.navigateToSidebar();
 		}
 
 		return TPromise.as(false);
@@ -1235,6 +1333,10 @@ export class NavigateLeftAction extends BaseNavigationAction {
 		super(id, label, groupService, panelService, partService, viewletService);
 	}
 
+	protected getMovement(): Movement {
+		return Movement.Left;
+	}
+
 	protected navigateOnEditorFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean | IViewlet> {
 		if (!isEditorGroupVertical) {
 			if (isSidebarPositionLeft) {
@@ -1286,6 +1388,10 @@ export class NavigateRightAction extends BaseNavigationAction {
 		@IViewletService viewletService: IViewletService
 	) {
 		super(id, label, groupService, panelService, partService, viewletService);
+	}
+
+	protected getMovement(): Movement {
+		return Movement.Right;
 	}
 
 	protected navigateOnEditorFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean | IViewlet> {
@@ -1342,6 +1448,10 @@ export class NavigateUpAction extends BaseNavigationAction {
 		super(id, label, groupService, panelService, partService, viewletService);
 	}
 
+	protected getMovement(): Movement {
+		return Movement.Up;
+	}
+
 	protected navigateOnEditorFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean> {
 		if (isEditorGroupVertical) {
 			return TPromise.as(false);
@@ -1371,6 +1481,10 @@ export class NavigateDownAction extends BaseNavigationAction {
 		@IViewletService viewletService: IViewletService
 	) {
 		super(id, label, groupService, panelService, partService, viewletService);
+	}
+
+	protected getMovement(): Movement {
+		return Movement.Down;
 	}
 
 	protected navigateOnEditorFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean | IPanel> {
