@@ -1130,6 +1130,59 @@ export enum Layout {
 
 export abstract class BaseNavigationAction extends Action {
 
+	static readonly NAVIGATION_MAP = {
+		[Layout.PanelBottomSidebarRight]: {
+			[Parts.EDITOR_PART]: {
+				[Movement.Right]: Parts.SIDEBAR_PART,
+				[Movement.Down]: Parts.PANEL_PART,
+			},
+			[Parts.PANEL_PART]: {
+				[Movement.Up]: Parts.EDITOR_PART,
+				[Movement.Right]: Parts.SIDEBAR_PART,
+			},
+			[Parts.SIDEBAR_PART]: {
+				[Movement.Left]: Parts.EDITOR_PART,
+			}
+		},
+		[Layout.PanelRightSidebarRight]: {
+			[Parts.EDITOR_PART]: {
+				[Movement.Right]: Parts.PANEL_PART,
+			},
+			[Parts.PANEL_PART]: {
+				[Movement.Left]: Parts.EDITOR_PART,
+				[Movement.Right]: Parts.SIDEBAR_PART,
+			},
+			[Parts.SIDEBAR_PART]: {
+				[Movement.Left]: Parts.PANEL_PART,
+			}
+		},
+		[Layout.PanelBottomSidebarLeft]: {
+			[Parts.EDITOR_PART]: {
+				[Movement.Left]: Parts.SIDEBAR_PART,
+				[Movement.Down]: Parts.PANEL_PART,
+			},
+			[Parts.PANEL_PART]: {
+				[Movement.Up]: Parts.EDITOR_PART,
+				[Movement.Left]: Parts.SIDEBAR_PART,
+			},
+			[Parts.SIDEBAR_PART]: {
+				[Movement.Right]: Parts.EDITOR_PART,
+			}
+		},
+		[Layout.PanelRightSidebarLeft]: {
+			[Parts.EDITOR_PART]: {
+				[Movement.Right]: Parts.PANEL_PART,
+				[Movement.Left]: Parts.SIDEBAR_PART,
+			},
+			[Parts.PANEL_PART]: {
+				[Movement.Left]: Parts.EDITOR_PART,
+			},
+			[Parts.SIDEBAR_PART]: {
+				[Movement.Right]: Parts.EDITOR_PART,
+			}
+		},
+	};
+
 	constructor(
 		id: string,
 		label: string,
@@ -1155,61 +1208,7 @@ export abstract class BaseNavigationAction extends Action {
 
 		const layout = this.getCurrentLayout(isSidebarPositionLeft, isPanelPositionBottom);
 
-		// TODO: Make static
-		const navigationMap = {
-			[Layout.PanelBottomSidebarRight]: {
-				[Parts.EDITOR_PART]: {
-					[Movement.Right]: Parts.SIDEBAR_PART,
-					[Movement.Down]: Parts.PANEL_PART,
-				},
-				[Parts.PANEL_PART]: {
-					[Movement.Up]: Parts.EDITOR_PART,
-					[Movement.Right]: Parts.SIDEBAR_PART,
-				},
-				[Parts.SIDEBAR_PART]: {
-					[Movement.Left]: Parts.EDITOR_PART,
-				}
-			},
-			[Layout.PanelRightSidebarRight]: {
-				[Parts.EDITOR_PART]: {
-					[Movement.Right]: Parts.PANEL_PART,
-				},
-				[Parts.PANEL_PART]: {
-					[Movement.Left]: Parts.EDITOR_PART,
-					[Movement.Right]: Parts.SIDEBAR_PART,
-				},
-				[Parts.SIDEBAR_PART]: {
-					[Movement.Left]: Parts.PANEL_PART,
-				}
-			},
-			[Layout.PanelBottomSidebarLeft]: {
-				[Parts.EDITOR_PART]: {
-					[Movement.Left]: Parts.SIDEBAR_PART,
-					[Movement.Down]: Parts.PANEL_PART,
-				},
-				[Parts.PANEL_PART]: {
-					[Movement.Up]: Parts.EDITOR_PART,
-					[Movement.Left]: Parts.SIDEBAR_PART,
-				},
-				[Parts.SIDEBAR_PART]: {
-					[Movement.Right]: Parts.EDITOR_PART,
-				}
-			},
-			[Layout.PanelRightSidebarLeft]: {
-				[Parts.EDITOR_PART]: {
-					[Movement.Right]: Parts.PANEL_PART,
-					[Movement.Left]: Parts.SIDEBAR_PART,
-				},
-				[Parts.PANEL_PART]: {
-					[Movement.Left]: Parts.EDITOR_PART,
-				},
-				[Parts.SIDEBAR_PART]: {
-					[Movement.Right]: Parts.EDITOR_PART,
-				}
-			},
-		};
-
-		const layoutMap = navigationMap[layout];
+		const layoutMap = BaseNavigationAction.NAVIGATION_MAP[layout];
 		const movements = layoutMap && layoutMap[focusedPart];
 		const nextPart = movements && movements[this.getMovement()];
 
