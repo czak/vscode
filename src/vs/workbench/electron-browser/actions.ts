@@ -1201,8 +1201,7 @@ export abstract class BaseNavigationAction extends Action {
 			Parts.SIDEBAR_PART,
 		].filter(part => this.partService.hasFocus(part))[0];
 
-		// TODO: Navigating between editor groups
-		// const isEditorGroupVertical = this.groupService.getGroupOrientation() === 'vertical';
+		const isEditorGroupVertical = this.groupService.getGroupOrientation() === 'vertical';
 		const isSidebarPositionLeft = this.partService.getSideBarPosition() === SidebarPosition.LEFT;
 		const isPanelPositionBottom = this.partService.getPanelPosition() === SidebarPosition.BOTTOM;
 
@@ -1212,7 +1211,20 @@ export abstract class BaseNavigationAction extends Action {
 		const movements = layoutMap && layoutMap[focusedPart];
 		const nextPart = movements && movements[this.getMovement()];
 
-		return this.navigateToPart(nextPart);
+		let navigation;
+		if (focusedPart === Parts.EDITOR_PART) {
+			navigation = this.navigateOnEditorFocus(isEditorGroupVertical);
+		} else {
+			navigation = TPromise.as(false);
+		}
+
+		return navigation
+			.then(didNavigate => {
+				if (!didNavigate) {
+					return this.navigateToPart(nextPart, isEditorGroupVertical);
+				}
+				return TPromise.as(true);
+			});
 	}
 
 	protected getMovement(): Movement {
@@ -1235,9 +1247,9 @@ export abstract class BaseNavigationAction extends Action {
 		}
 	}
 
-	protected navigateToPart(part: Parts): TPromise<boolean | IViewlet | IPanel> {
+	protected navigateToPart(part: Parts, isEditorGroupVertical: boolean): TPromise<boolean | IViewlet | IPanel> {
 		if (part === Parts.EDITOR_PART) {
-			return this.navigateToLastActiveGroup();
+			return this.navigateToEditor(isEditorGroupVertical);
 		} else if (part === Parts.PANEL_PART) {
 			return this.navigateToPanel();
 		} else if (part === Parts.SIDEBAR_PART) {
@@ -1247,7 +1259,7 @@ export abstract class BaseNavigationAction extends Action {
 		return TPromise.as(false);
 	}
 
-	protected navigateOnEditorFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean | IViewlet | IPanel> {
+	protected navigateOnEditorFocus(isEditorGroupVertical: boolean): TPromise<boolean | IViewlet | IPanel> {
 		return TPromise.as(true);
 	}
 
@@ -1256,6 +1268,10 @@ export abstract class BaseNavigationAction extends Action {
 	}
 
 	protected navigateOnSidebarFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean | IViewlet> {
+		return TPromise.as(true);
+	}
+
+	protected navigateToEditor(isEditorGroupVertical: boolean): TPromise<boolean> {
 		return TPromise.as(true);
 	}
 
@@ -1336,20 +1352,20 @@ export class NavigateLeftAction extends BaseNavigationAction {
 		return Movement.Left;
 	}
 
-	protected navigateOnEditorFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean | IViewlet> {
+	protected navigateOnEditorFocus(isEditorGroupVertical: boolean): TPromise<boolean | IViewlet> {
 		if (!isEditorGroupVertical) {
-			if (isSidebarPositionLeft) {
-				return this.navigateToSidebar();
-			}
 			return TPromise.as(false);
 		}
-		return this.navigateAcrossEditorGroup(Direction.Previous)
-			.then(didNavigate => {
-				if (!didNavigate && isSidebarPositionLeft) {
-					return this.navigateToSidebar();
-				}
-				return TPromise.as(true);
-			});
+
+		return this.navigateAcrossEditorGroup(Direction.Previous);
+	}
+
+	protected navigateToEditor(isEditorGroupVertical: boolean): TPromise<boolean> {
+		if (isEditorGroupVertical) {
+			return this.navigateToLastEditorGroup();
+		}
+
+		return this.navigateToLastActiveGroup();
 	}
 
 	protected navigateOnPanelFocus(isEditorGroupVertica: boolean, isSidebarPositionLeft: boolean): TPromise<boolean | IViewlet> {
@@ -1393,21 +1409,20 @@ export class NavigateRightAction extends BaseNavigationAction {
 		return Movement.Right;
 	}
 
-	protected navigateOnEditorFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean | IViewlet> {
+	protected navigateOnEditorFocus(isEditorGroupVertical: boolean): TPromise<boolean | IViewlet> {
 		if (!isEditorGroupVertical) {
-			if (!isSidebarPositionLeft) {
-				return this.navigateToSidebar();
-			}
 			return TPromise.as(false);
 		}
 
-		return this.navigateAcrossEditorGroup(Direction.Next)
-			.then(didNavigate => {
-				if (!didNavigate && !isSidebarPositionLeft) {
-					return this.navigateToSidebar();
-				}
-				return TPromise.as(true);
-			});
+		return this.navigateAcrossEditorGroup(Direction.Next);
+	}
+
+	protected navigateToEditor(isEditorGroupVertical: boolean): TPromise<boolean> {
+		if (isEditorGroupVertical) {
+			return this.navigateToFirstEditorGroup();
+		}
+
+		return this.navigateToLastActiveGroup();
 	}
 
 	protected navigateOnPanelFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean | IViewlet> {
@@ -1451,11 +1466,19 @@ export class NavigateUpAction extends BaseNavigationAction {
 		return Movement.Up;
 	}
 
-	protected navigateOnEditorFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean> {
+	protected navigateOnEditorFocus(isEditorGroupVertical: boolean): TPromise<boolean> {
 		if (isEditorGroupVertical) {
 			return TPromise.as(false);
 		}
 		return this.navigateAcrossEditorGroup(Direction.Previous);
+	}
+
+	protected navigateToEditor(isEditorGroupVertical: boolean): TPromise<boolean> {
+		if (!isEditorGroupVertical) {
+			return this.navigateToLastEditorGroup();
+		}
+
+		return this.navigateToLastActiveGroup();
 	}
 
 	protected navigateOnPanelFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean> {
@@ -1486,18 +1509,21 @@ export class NavigateDownAction extends BaseNavigationAction {
 		return Movement.Down;
 	}
 
-	protected navigateOnEditorFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean | IPanel> {
+	protected navigateToEditor(isEditorGroupVertical: boolean): TPromise<boolean> {
+		if (!isEditorGroupVertical) {
+			return this.navigateToFirstEditorGroup();
+		}
+
+		return this.navigateToLastActiveGroup();
+	}
+
+
+	protected navigateOnEditorFocus(isEditorGroupVertical: boolean): TPromise<boolean | IPanel> {
 		if (isEditorGroupVertical) {
 			return this.navigateToPanel();
 		}
 
-		return this.navigateAcrossEditorGroup(Direction.Next)
-			.then(didNavigate => {
-				if (didNavigate) {
-					return TPromise.as(true);
-				}
-				return this.navigateToPanel();
-			});
+		return this.navigateAcrossEditorGroup(Direction.Next);
 	}
 }
 
