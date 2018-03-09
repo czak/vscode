@@ -1263,14 +1263,6 @@ export abstract class BaseNavigationAction extends Action {
 		return TPromise.as(true);
 	}
 
-	protected navigateOnPanelFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean | IPanel> {
-		return TPromise.as(true);
-	}
-
-	protected navigateOnSidebarFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean | IViewlet> {
-		return TPromise.as(true);
-	}
-
 	protected navigateToEditor(isEditorGroupVertical: boolean): TPromise<boolean> {
 		return TPromise.as(true);
 	}
@@ -1367,26 +1359,6 @@ export class NavigateLeftAction extends BaseNavigationAction {
 
 		return this.navigateToLastActiveGroup();
 	}
-
-	protected navigateOnPanelFocus(isEditorGroupVertica: boolean, isSidebarPositionLeft: boolean): TPromise<boolean | IViewlet> {
-		if (isSidebarPositionLeft) {
-			return this.navigateToSidebar();
-		}
-
-		return TPromise.as(false);
-	}
-
-	protected navigateOnSidebarFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean> {
-		if (isSidebarPositionLeft) {
-			return TPromise.as(false);
-		}
-
-		if (isEditorGroupVertical) {
-			return this.navigateToLastEditorGroup();
-		}
-
-		return this.navigateToLastActiveGroup();
-	}
 }
 
 export class NavigateRightAction extends BaseNavigationAction {
@@ -1418,26 +1390,6 @@ export class NavigateRightAction extends BaseNavigationAction {
 	}
 
 	protected navigateToEditor(isEditorGroupVertical: boolean): TPromise<boolean> {
-		if (isEditorGroupVertical) {
-			return this.navigateToFirstEditorGroup();
-		}
-
-		return this.navigateToLastActiveGroup();
-	}
-
-	protected navigateOnPanelFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean | IViewlet> {
-		if (!isSidebarPositionLeft) {
-			return this.navigateToSidebar();
-		}
-
-		return TPromise.as(false);
-	}
-
-	protected navigateOnSidebarFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean> {
-		if (!isSidebarPositionLeft) {
-			return TPromise.as(false);
-		}
-
 		if (isEditorGroupVertical) {
 			return this.navigateToFirstEditorGroup();
 		}
@@ -1479,13 +1431,6 @@ export class NavigateUpAction extends BaseNavigationAction {
 		}
 
 		return this.navigateToLastActiveGroup();
-	}
-
-	protected navigateOnPanelFocus(isEditorGroupVertical: boolean, isSidebarPositionLeft: boolean): TPromise<boolean> {
-		if (isEditorGroupVertical) {
-			return this.navigateToLastActiveGroup();
-		}
-		return this.navigateToLastEditorGroup();
 	}
 }
 
